@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime, timedelta
+
+import requests
 
 app = FastAPI()
 
@@ -34,3 +37,44 @@ def parse_asteroids(near_earth_objects):
 			}
 			result.append(clean_asteroid)
 	return result
+
+@app.get("/asteroids")
+def get_asteroids(start_date: str, end_date: str):
+	cache_key = f"{start_date}_{end_date}"
+	
+	if cache_key in cache:
+		return cache[cache_key]
+	
+	asteroids = fetch_asteroids_range(start_date, end_date)
+	cache[cache_key] = asteroids
+	return asteroids
+
+def fetch_asteroids_range(start_date: str, end_date: str):
+	start = datetime.strptime(start_date, "%Y-%m-%d")
+	end = datetime.strptime(end_date, "%Y-%m-%d")
+	
+	all_asteroids = []
+	current_start = start
+
+	while current_start < end:
+		current_end = current_start + timedelta(days=7)
+		
+		if current_end > end:
+			current_end = end
+
+		url = "https://api.nasa.gov/neo/rest/v1/feed"
+		params = {
+			"start_date": current_start.strftime("%Y-%m-%d"),
+			"end_date": current_end.strftime("%Y-%m-%d"),
+			"api_key": NASA_API_KEY
+		}
+
+		response = requests.get(url, params=params)
+		data = response.json()
+
+		chunk = parse_asteroids(data["near_earth_objects"])
+		all_asteroids.extend(chunk)
+
+		current_start = current_end + timedelta(days=1)
+	
+	return all_asteroids
