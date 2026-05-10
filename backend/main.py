@@ -4,8 +4,11 @@ from datetime import datetime, timedelta
 
 import requests
 
+### create a new API service ###
 app = FastAPI()
 
+
+### adding CORS ###
 app.add_middleware(
 	CORSMiddleware,
 	allow_origins=["*"],
@@ -16,6 +19,8 @@ app.add_middleware(
 NASA_API_KEY = "FXZ8qsbEB8AfVyOmUpveQ1UYklrTZGYbN42YZb0e"
 cache = {}
 
+
+### parsing json data ###
 def parse_asteroids(near_earth_objects):
 	result = []
 	for date in near_earth_objects.keys():
@@ -38,7 +43,11 @@ def parse_asteroids(near_earth_objects):
 			result.append(clean_asteroid)
 	return result
 
+
 @app.get("/asteroids")
+
+
+### caching data ###
 def get_asteroids(start_date: str, end_date: str):
 	cache_key = f"{start_date}_{end_date}"
 	
@@ -49,6 +58,8 @@ def get_asteroids(start_date: str, end_date: str):
 	cache[cache_key] = asteroids
 	return asteroids
 
+
+### fetch with 7 days chunks according to nasa api call limits ###
 def fetch_asteroids_range(start_date: str, end_date: str):
 	start = datetime.strptime(start_date, "%Y-%m-%d")
 	end = datetime.strptime(end_date, "%Y-%m-%d")
